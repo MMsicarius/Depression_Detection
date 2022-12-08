@@ -1,8 +1,11 @@
+import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import nltk
 import math
+import matplotlib
 from nltk.sentiment import SentimentIntensityAnalyzer
+
 
 def progress_bar(progress, data_length):
     result = progress / data_length * 100
@@ -12,9 +15,11 @@ def progress_bar(progress, data_length):
     else:
         return print("completed!")
 
+
 def sample_size(data, sample_size_number):
     result = data
     return result.sample(frac=sample_size_number)
+
 
 def sample_loop(data):
     sentiment_analysis = SentimentIntensityAnalyzer()
@@ -41,7 +46,6 @@ def sample_loop(data):
             temp_positive.append(result.get("pos"))
             temp_compound.append(result.get("compound"))
             sentence += 20
-
 
         answer = 0
         for i in temp_negative:
@@ -79,6 +83,7 @@ def sample_loop(data):
         progress_bar(progress, data_length)
     return method_result
 
+
 def loop_results(data, position):
     result = []
     position = 0
@@ -92,10 +97,10 @@ def loop_results(data, position):
         iterator += 1
     return result
 
+
 class Functions:
     def __init__(self, dataset="depression_dataset_reddit.csv"):
         self.dataset = dataset
-
 
     def load_dataset(self):
         self.dataset = pd.read_csv("depression_dataset_reddit.csv")
@@ -110,7 +115,7 @@ class Functions:
 
         self.dataset["token"] = token_result
 
-    def sentiment_analysis(self):
+    def sentiment_analysis_process(self):
         depressed_sample = self.dataset.query("depressed == 1").sample(frac=1, replace=True, random_state=1)
         not_depressed_sample = self.dataset.query("depressed == 0").sample(frac=1, replace=True, random_state=1)
         iterator = 0
@@ -131,14 +136,23 @@ class Functions:
         vader_positive.extend(loop_results(not_depressed_answers, 2))
         vader_compound.extend(loop_results(not_depressed_answers, 3))
 
-
-
         self.dataset["vader_negative"] = vader_negative
         self.dataset["vader_neutral"] = vader_neutral
         self.dataset["vader_positive"] = vader_positive
         self.dataset["vader_compound"] = vader_compound
-        print("sentiment analysis complete")
+        print("sentiment analysis processed!")
 
+    def sentiment_analysis(self):
+        depressed_breakdown = self.dataset[self.dataset["depressed"] == 1]
+        not_depressed_breakdown = self.dataset[self.dataset["depressed"] == 0]
+
+        print("Description of depressed dataset")
+        print(depressed_breakdown.describe())
+        print("Description of the not depressed dataset")
+        print(not_depressed_breakdown.describe())
+
+        ax = depressed_breakdown.plot.hist(column=["vader_compound"])
+        plt.show()
 
     def print_dataset(self):
         print(self.dataset.head())
@@ -149,3 +163,17 @@ class Functions:
         for x in result.index:
             print(result["token"][x])
 
+
+class Tweets:
+
+    def __init__(self, dataset="tweet_emotions.csv"):
+        self.dataset = dataset
+
+    def load_dataset(self):
+        self.dataset = pd.read_csv("tweet_emotions.csv")
+        # self.dataset.rename(columns={"clean_text": "text", "is_depression": "depressed"}, inplace=True)
+        print("Loaded dataset!")
+
+    def print_dataset(self):
+        print(self.dataset.head())
+        print(self.dataset.describe())

@@ -9,9 +9,16 @@ data.load_dataset()
 
 data.load_corpus()
 
+data.sentiment_analysis_process()
+
 data.sentiment_analysis()
 
-data.print_dataset()
+data2 = functions.Tweets()
+
+data2.load_dataset()
+
+data2.print_dataset()
+
 
 
 
