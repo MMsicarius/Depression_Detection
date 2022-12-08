@@ -9,7 +9,7 @@ data.load_dataset()
 
 data.load_corpus()
 
-data.sentiment_analysis_process()
+data.sentiment_analysis_vader()
 
 data.sentiment_analysis()
 

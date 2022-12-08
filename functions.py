@@ -115,7 +115,7 @@ class Functions:
 
         self.dataset["token"] = token_result
 
-    def sentiment_analysis_process(self):
+    def sentiment_analysis_vader(self):
         depressed_sample = self.dataset.query("depressed == 1").sample(frac=1, replace=True, random_state=1)
         not_depressed_sample = self.dataset.query("depressed == 0").sample(frac=1, replace=True, random_state=1)
         iterator = 0
@@ -142,6 +142,10 @@ class Functions:
         self.dataset["vader_compound"] = vader_compound
         print("sentiment analysis processed!")
 
+    def sentiment_analysis_textblob(self):
+        return 0
+        # TODO text_blob method
+
     def sentiment_analysis(self):
         depressed_breakdown = self.dataset[self.dataset["depressed"] == 1]
         not_depressed_breakdown = self.dataset[self.dataset["depressed"] == 0]
@@ -153,6 +157,9 @@ class Functions:
 
         ax = depressed_breakdown.plot.hist(column=["vader_compound"])
         plt.show()
+
+        #  TODO concordance
+        #  TODO Collocation
 
     def print_dataset(self):
         print(self.dataset.head())
