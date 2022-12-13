@@ -4,6 +4,14 @@ import numpy as np
 import nltk
 import math
 import matplotlib
+from textblob import TextBlob
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, f1_score
+from wordcloud import WordCloud
+from nltk.corpus import stopwords
 from nltk.sentiment import SentimentIntensityAnalyzer
 
 
@@ -98,6 +106,15 @@ def loop_results(data, position):
     return result
 
 
+def correction(input_text, mode):
+    if mode == 1:
+        unfiltered_text = TextBlob(input_text)
+        unfiltered_text.correct()
+        return str(unfiltered_text)
+    else:
+        return input_text
+
+
 class Functions:
     def __init__(self, dataset="depression_dataset_reddit.csv"):
         self.dataset = dataset
@@ -113,11 +130,29 @@ class Functions:
         for x in data:
             token_result.append(nltk.word_tokenize(x))
 
+    def load_corpus_filtered(self):
+        stop_words = set(stopwords.words("english"))
+        data = [x for x in self.dataset["text"]]
+        token_result = []
+        progress = 0
+        data_length = len(data)
+        for x in data:
+            x = correction(x, 0)
+            filter_result = []
+            result = nltk.word_tokenize(x)
+            for y in result:
+                if y not in stop_words:
+                    filter_result.append(y)
+            token_result.append(filter_result)
+            progress += 1
+            progress_bar(progress, data_length)
+
         self.dataset["token"] = token_result
+        print("dataset tokenised!")
 
     def sentiment_analysis_vader(self):
-        depressed_sample = self.dataset.query("depressed == 1").sample(frac=1, replace=True, random_state=1)
-        not_depressed_sample = self.dataset.query("depressed == 0").sample(frac=1, replace=True, random_state=1)
+        depressed_sample = self.dataset.query("depressed == 1")
+        not_depressed_sample = self.dataset.query("depressed == 0")
         iterator = 0
         vader_negative = []
         vader_neutral = []
@@ -142,9 +177,33 @@ class Functions:
         self.dataset["vader_compound"] = vader_compound
         print("sentiment analysis processed!")
 
-    def sentiment_analysis_textblob(self):
-        return 0
-        # TODO text_blob method
+    def sentiment_analysis_vader_nosplit(self):
+        results_neg = []
+        results_neu = []
+        results_pos = []
+        results_com = []
+        progress = 0
+        data_length = len(self.dataset)
+        depressed_sample = self.dataset.query("depressed == 1").sample(frac=1, replace=True, random_state=1)
+        not_depressed_sample = self.dataset.query("depressed == 0").sample(frac=1, replace=True, random_state=1)
+
+        sentiment_analysis = SentimentIntensityAnalyzer()
+        print("Processing dataset with no sentence splitting")
+        for x in self.dataset.index:
+            sample = self.dataset.iloc[[x], [0]]
+            result = sentiment_analysis.polarity_scores(str(sample))
+            results_neg.append(result["neg"])
+            results_neu.append(result["neu"])
+            results_pos.append(result["pos"])
+            results_com.append(result["compound"])
+            progress += 1
+            progress_bar(progress, data_length)
+
+        self.dataset["vader_negative_nosplit"] = results_neg
+        self.dataset["vader_neutral_nosplit"] = results_neu
+        self.dataset["vader_positive_nosplit"] = results_pos
+        self.dataset["vader_compound_nosplit"] = results_com
+        print("process completed")
 
     def sentiment_analysis(self):
         depressed_breakdown = self.dataset[self.dataset["depressed"] == 1]
@@ -155,11 +214,28 @@ class Functions:
         print("Description of the not depressed dataset")
         print(not_depressed_breakdown.describe())
 
+        ax = WordCloud(background_color="white", width=1500, height=1500).generate(str(depressed_breakdown["token"]))
+        plt.axis("off")
+        plt.imshow(ax)
+        plt.show()
+        ax = WordCloud(background_color="white", width=1500, height=1500).generate(
+            str(not_depressed_breakdown["token"]))
+        plt.axis("off")
+        plt.imshow(ax)
+        plt.show()
         ax = depressed_breakdown.plot.hist(column=["vader_compound"])
+        plt.show()
+        ax = not_depressed_breakdown.plot.hist(column=["vader_compound"])
         plt.show()
 
         #  TODO concordance
         #  TODO Collocation
+
+    def assess_vader_diff(self):
+        self.dataset["vader_difference_neg"] = self.dataset["vader_negative"] - self.dataset["vader_negative_nosplit"]
+        self.dataset["vader_difference_neu"] = self.dataset["vader_neutral"] - self.dataset["vader_neutral_nosplit"]
+        self.dataset["vader_difference_pos"] = self.dataset["vader_positive"] - self.dataset["vader_positive_nosplit"]
+        self.dataset["vader_difference_com"] = self.dataset["vader_compound"] - self.dataset["vader_compound_nosplit"]
 
     def print_dataset(self):
         print(self.dataset.head())
@@ -170,17 +246,34 @@ class Functions:
         for x in result.index:
             print(result["token"][x])
 
+    def model_tests(self):
+        detokenised = []
+        for x in self.dataset.token:
+            detokenised.append(" ".join(x))
+        self.dataset["text_train"] = detokenised
+        X = self.dataset.text_train
+        y = self.dataset.depressed
 
-class Tweets:
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
-    def __init__(self, dataset="tweet_emotions.csv"):
-        self.dataset = dataset
+        vector = CountVectorizer(max_features=1000, binary=True)
 
-    def load_dataset(self):
-        self.dataset = pd.read_csv("tweet_emotions.csv")
-        # self.dataset.rename(columns={"clean_text": "text", "is_depression": "depressed"}, inplace=True)
-        print("Loaded dataset!")
+        X_train_vectorised = vector.fit_transform(X_train)
 
-    def print_dataset(self):
-        print(self.dataset.head())
-        print(self.dataset.describe())
+        nb = MultinomialNB()
+
+        nb.fit(X_train_vectorised, y_train)
+
+        X_test_vetorised = vector.transform(X_test)
+
+        y_predict = nb.predict(X_test_vetorised)
+
+        print("Naive Brayers")
+        print("Accuracy:" + " " + str((round((accuracy_score(y_test, y_predict) * 100), 2))) + "%")
+        print("F1 score" + " " + str((round((f1_score(y_test, y_predict) * 100), 2))))
+
+        model = LogisticRegression()
+        model.fit(X_train_vectorised, y_train)
+        y_predict = model.score(X_train_vectorised, y_train)
+        print("Logistic Regression")
+        print("R2:" + " " + str(y_predict))
