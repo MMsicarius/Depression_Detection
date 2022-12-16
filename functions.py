@@ -4,6 +4,7 @@ import numpy as np
 import nltk
 import math
 import matplotlib
+from collections import Counter
 from textblob import TextBlob
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import CountVectorizer
@@ -11,7 +12,7 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, f1_score
 from wordcloud import WordCloud
-from nltk.corpus import stopwords
+from nltk.corpus import stopwords, words
 from nltk.sentiment import SentimentIntensityAnalyzer
 
 
@@ -23,6 +24,10 @@ def progress_bar(progress, data_length):
     else:
         return print("completed!")
 
+def most_common(list):
+    print(list)
+    most_freq = Counter(list).most_common(100)
+    return most_freq
 
 def sample_size(data, sample_size_number):
     result = data
@@ -184,8 +189,8 @@ class Functions:
         results_com = []
         progress = 0
         data_length = len(self.dataset)
-        depressed_sample = self.dataset.query("depressed == 1").sample(frac=1, replace=True, random_state=1)
-        not_depressed_sample = self.dataset.query("depressed == 0").sample(frac=1, replace=True, random_state=1)
+        depressed_sample = self.dataset.query("depressed == 1")
+        not_depressed_sample = self.dataset.query("depressed == 0")
 
         sentiment_analysis = SentimentIntensityAnalyzer()
         print("Processing dataset with no sentence splitting")
@@ -205,16 +210,53 @@ class Functions:
         self.dataset["vader_compound_nosplit"] = results_com
         print("process completed")
 
+    def sentiment_word_analysis(self):
+        depressed_breakdown = self.dataset[self.dataset["depressed"] == 1]
+        not_depressed_breakdown = self.dataset[self.dataset["depressed"] == 0]
+        combined_depressed_responses = ""
+        combined_not_depressed_responses = ""
+        english_words = set(words.words())
+
+        result = depressed_breakdown.token.tolist()
+        for x in result:
+            intermediate = []
+            for y in x:
+                if y in english_words:
+                    intermediate.append(y)
+            combined = ' '.join(intermediate)
+            combined_depressed_responses = combined_depressed_responses + " " + combined
+
+        result = not_depressed_breakdown.token.tolist()
+        for x in result:
+            intermediate = []
+            for y in x:
+                if y in english_words:
+                    intermediate.append(y)
+            combined = ' '.join(intermediate)
+            combined_not_depressed_responses = combined_not_depressed_responses + " " + combined
+
+        combined_depressed_responses.split()
+        combined_not_depressed_responses.split()
+        most_common_depressed_words = most_common(combined_depressed_responses)
+        most_common_not_depressed_words = most_common(combined_not_depressed_responses)
+
+        print(most_common_depressed_words)
+        print(most_common_not_depressed_words)
+
+
+
     def sentiment_analysis(self):
         depressed_breakdown = self.dataset[self.dataset["depressed"] == 1]
         not_depressed_breakdown = self.dataset[self.dataset["depressed"] == 0]
+
 
         print("Description of depressed dataset")
         print(depressed_breakdown.describe())
         print("Description of the not depressed dataset")
         print(not_depressed_breakdown.describe())
 
-        ax = WordCloud(background_color="white", width=1500, height=1500).generate(str(depressed_breakdown["token"]))
+        ax = WordCloud(background_color="white", width=1500, height=1500).generate(
+            str(depressed_breakdown["token"]))
         plt.axis("off")
         plt.imshow(ax)
         plt.show()
@@ -223,10 +265,26 @@ class Functions:
         plt.axis("off")
         plt.imshow(ax)
         plt.show()
-        ax = depressed_breakdown.plot.hist(column=["vader_compound"])
+        ax = self.dataset.plot.hist(column=["vader_negative"], by="depressed")
         plt.show()
-        ax = not_depressed_breakdown.plot.hist(column=["vader_compound"])
+        ab = self.dataset.plot.hist(column=["vader_neutral"], by="depressed")
         plt.show()
+        ac = self.dataset.plot.hist(column=["vader_positive"], by="depressed")
+        plt.show()
+        ad = self.dataset.plot.hist(column=["vader_negative_nosplit"], by="depressed")
+        plt.show()
+        ae = self.dataset.plot.hist(column=["vader_neutral_nosplit"], by="depressed")
+        plt.show()
+        af = self.dataset.plot.hist(column=["vader_positive_nosplit"], by="depressed")
+        plt.show()
+        ae = self.dataset.boxplot(column=["vader_negative_nosplit", "vader_neutral_nosplit",
+                                               "vader_positive_nosplit", "vader_compound_nosplit"], by="depressed")
+        plt.show()
+
+
+
+
+
 
         #  TODO concordance
         #  TODO Collocation
@@ -268,6 +326,8 @@ class Functions:
 
         y_predict = nb.predict(X_test_vetorised)
 
+
+
         print("Naive Brayers")
         print("Accuracy:" + " " + str((round((accuracy_score(y_test, y_predict) * 100), 2))) + "%")
         print("F1 score" + " " + str((round((f1_score(y_test, y_predict) * 100), 2))))
@@ -277,3 +337,4 @@ class Functions:
         y_predict = model.score(X_train_vectorised, y_train)
         print("Logistic Regression")
         print("R2:" + " " + str(y_predict))
+

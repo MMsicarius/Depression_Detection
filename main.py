@@ -1,4 +1,7 @@
+from nltk.corpus import words
+
 import functions
+import nltk
 
 data = functions.Functions()
 
@@ -15,5 +18,7 @@ data.assess_vader_diff()
 data.model_tests()
 
 #data.print_dataset()
+
+data.sentiment_word_analysis()
 
 data.sentiment_analysis()
