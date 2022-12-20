@@ -137,16 +137,17 @@ class Functions:
 
     def load_corpus_filtered(self):
         stop_words = set(stopwords.words("english"))
+        english_words = set(words.words())
         data = [x for x in self.dataset["text"]]
         token_result = []
         progress = 0
         data_length = len(data)
         for x in data:
-            x = correction(x, 0)
+            x = correction(x, 1)
             filter_result = []
             result = nltk.word_tokenize(x)
             for y in result:
-                if y not in stop_words:
+                if y in english_words and y not in stop_words:
                     filter_result.append(y)
             token_result.append(filter_result)
             progress += 1
@@ -213,35 +214,58 @@ class Functions:
     def sentiment_word_analysis(self):
         depressed_breakdown = self.dataset[self.dataset["depressed"] == 1]
         not_depressed_breakdown = self.dataset[self.dataset["depressed"] == 0]
-        combined_depressed_responses = ""
-        combined_not_depressed_responses = ""
+        combined_depressed_responses = []
+        combined_not_depressed_responses = []
         english_words = set(words.words())
+        stop_words = set(stopwords.words("english"))
 
         result = depressed_breakdown.token.tolist()
+        progress = 0
+        data_length = len(result)
         for x in result:
-            intermediate = []
-            for y in x:
-                if y in english_words:
-                    intermediate.append(y)
-            combined = ' '.join(intermediate)
-            combined_depressed_responses = combined_depressed_responses + " " + combined
+            combined_depressed_responses = combined_depressed_responses + x
+            progress += 1
+            progress_bar(progress, data_length)
 
         result = not_depressed_breakdown.token.tolist()
+        progress = 0
+        data_length = len(result)
         for x in result:
-            intermediate = []
-            for y in x:
-                if y in english_words:
-                    intermediate.append(y)
-            combined = ' '.join(intermediate)
-            combined_not_depressed_responses = combined_not_depressed_responses + " " + combined
+            combined_not_depressed_responses = combined_not_depressed_responses + x
+            progress += 1
+            progress_bar(progress, data_length)
 
-        combined_depressed_responses.split()
-        combined_not_depressed_responses.split()
-        most_common_depressed_words = most_common(combined_depressed_responses)
-        most_common_not_depressed_words = most_common(combined_not_depressed_responses)
+        most_common_depressed_words = Counter(" ".join(combined_depressed_responses).split()).most_common(100)#most_common(combined_depressed_responses)
+        most_common_not_depressed_words = Counter(" ".join(combined_not_depressed_responses).split()).most_common(100)#most_common(combined_not_depressed_responses)
 
-        print(most_common_depressed_words)
-        print(most_common_not_depressed_words)
+
+
+        most_common_depressed_words_individuals = []
+        most_common_depressed_words_numbers = []
+        most_common_not_depressed_words_individuals = []
+        most_common_not_depressed_words_numbers = []
+
+        for i in most_common_depressed_words:
+            most_common_depressed_words_individuals.append(i[0])
+            most_common_depressed_words_numbers.append(i[1])
+
+        for i in most_common_not_depressed_words:
+            most_common_not_depressed_words_individuals.append(i[0])
+            most_common_not_depressed_words_numbers.append(i[1])
+
+        depressed_words_unique = []
+        for i in most_common_depressed_words_individuals:
+            if i not in most_common_not_depressed_words_individuals:
+                depressed_words_unique.append(i)
+
+        not_depressed_words_unique = []
+        for i in most_common_not_depressed_words_individuals:
+            if i not in most_common_depressed_words_individuals:
+                not_depressed_words_unique.append(i)
+
+
+        print(most_common_depressed_words_individuals)
+        print(most_common_not_depressed_words_individuals)
 
 
 
@@ -280,11 +304,6 @@ class Functions:
         ae = self.dataset.boxplot(column=["vader_negative_nosplit", "vader_neutral_nosplit",
                                                "vader_positive_nosplit", "vader_compound_nosplit"], by="depressed")
         plt.show()
-
-
-
-
-
 
         #  TODO concordance
         #  TODO Collocation
