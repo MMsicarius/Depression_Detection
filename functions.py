@@ -4,6 +4,7 @@ import numpy as np
 import nltk
 import math
 import matplotlib
+import seaborn as sns
 from collections import Counter
 from textblob import TextBlob
 from sklearn.model_selection import train_test_split
@@ -143,7 +144,7 @@ class Functions:
         progress = 0
         data_length = len(data)
         for x in data:
-            x = correction(x, 1)
+            x = correction(x, 0)
             filter_result = []
             result = nltk.word_tokenize(x)
             for y in result:
@@ -237,8 +238,17 @@ class Functions:
 
         most_common_depressed_words = Counter(" ".join(combined_depressed_responses).split()).most_common(100)#most_common(combined_depressed_responses)
         most_common_not_depressed_words = Counter(" ".join(combined_not_depressed_responses).split()).most_common(100)#most_common(combined_not_depressed_responses)
+        depressed_text = nltk.Text(combined_depressed_responses)
+        depressed_bigrams = nltk.collocations.BigramCollocationFinder.from_words(depressed_text)
+        depressed_trigrams = nltk.collocations.TrigramCollocationFinder.from_words(depressed_text)
+        print("depressed bigrams\n" + str(depressed_bigrams.ngram_fd.most_common(10)))
+        print("depressed trigrams\n" + str(depressed_trigrams.ngram_fd.most_common(10)))
 
-
+        not_depressed_text = nltk.Text(combined_not_depressed_responses)
+        not_depressed_bigram = nltk.collocations.BigramCollocationFinder.from_words(not_depressed_text)
+        not_depressed_trigram = nltk.collocations.TrigramCollocationFinder.from_words(not_depressed_text)
+        print("not depressed bigram\n" + str(not_depressed_bigram.ngram_fd.most_common(10)))
+        print("not depressed trigram\n" + str(not_depressed_trigram.ngram_fd.most_common(10)))
 
         most_common_depressed_words_individuals = []
         most_common_depressed_words_numbers = []
@@ -254,15 +264,27 @@ class Functions:
             most_common_not_depressed_words_numbers.append(i[1])
 
         depressed_words_unique = []
+        depressed_words_unique_numbers = []
         for i in most_common_depressed_words_individuals:
             if i not in most_common_not_depressed_words_individuals:
                 depressed_words_unique.append(i)
+                depressed_words_unique_numbers.append(most_common_depressed_words_numbers[
+                                                          (most_common_depressed_words_individuals.index(i))])
 
         not_depressed_words_unique = []
+        not_depressed_words_unique_numbers = []
         for i in most_common_not_depressed_words_individuals:
             if i not in most_common_depressed_words_individuals:
                 not_depressed_words_unique.append(i)
+                not_depressed_words_unique_numbers.append(most_common_not_depressed_words_numbers[
+                                                              (most_common_not_depressed_words_individuals.index(i))])
 
+        sns.barplot(x=depressed_words_unique, y=depressed_words_unique_numbers)
+        plt.xlim(0, 10)
+        plt.show()
+        sns.barplot(x=not_depressed_words_unique, y=not_depressed_words_unique_numbers)
+        plt.xlim(0, 10)
+        plt.show()
 
         print(most_common_depressed_words_individuals)
         print(most_common_not_depressed_words_individuals)
@@ -305,7 +327,7 @@ class Functions:
                                                "vader_positive_nosplit", "vader_compound_nosplit"], by="depressed")
         plt.show()
 
-        #  TODO concordance
+
         #  TODO Collocation
 
     def assess_vader_diff(self):
