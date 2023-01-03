@@ -25,10 +25,12 @@ def progress_bar(progress, data_length):
     else:
         return print("completed!")
 
+
 def most_common(list):
     print(list)
     most_freq = Counter(list).most_common(100)
     return most_freq
+
 
 def sample_size(data, sample_size_number):
     result = data
@@ -141,6 +143,7 @@ class Functions:
         english_words = set(words.words())
         data = [x for x in self.dataset["text"]]
         token_result = []
+        dataset_size = 0
         progress = 0
         data_length = len(data)
         for x in data:
@@ -150,12 +153,14 @@ class Functions:
             for y in result:
                 if y in english_words and y not in stop_words:
                     filter_result.append(y)
+            dataset_size = dataset_size + len(filter_result)
             token_result.append(filter_result)
             progress += 1
             progress_bar(progress, data_length)
 
         self.dataset["token"] = token_result
         print("dataset tokenised!")
+        print(str(dataset_size) + " " + "words present and tokenised!")
 
     def sentiment_analysis_vader(self):
         depressed_sample = self.dataset.query("depressed == 1")
@@ -236,8 +241,10 @@ class Functions:
             progress += 1
             progress_bar(progress, data_length)
 
-        most_common_depressed_words = Counter(" ".join(combined_depressed_responses).split()).most_common(100)#most_common(combined_depressed_responses)
-        most_common_not_depressed_words = Counter(" ".join(combined_not_depressed_responses).split()).most_common(100)#most_common(combined_not_depressed_responses)
+        most_common_depressed_words = Counter(" ".join(combined_depressed_responses).split()).most_common(
+            100)  # most_common(combined_depressed_responses)
+        most_common_not_depressed_words = Counter(" ".join(combined_not_depressed_responses).split()).most_common(
+            100)  # most_common(combined_not_depressed_responses)
         depressed_text = nltk.Text(combined_depressed_responses)
         depressed_bigrams = nltk.collocations.BigramCollocationFinder.from_words(depressed_text)
         depressed_trigrams = nltk.collocations.TrigramCollocationFinder.from_words(depressed_text)
@@ -286,20 +293,44 @@ class Functions:
         plt.xlim(0, 10)
         plt.show()
 
-        print(most_common_depressed_words_individuals)
-        print(most_common_not_depressed_words_individuals)
-
-
-
     def sentiment_analysis(self):
         depressed_breakdown = self.dataset[self.dataset["depressed"] == 1]
         not_depressed_breakdown = self.dataset[self.dataset["depressed"] == 0]
+        depressed_negative = len(depressed_breakdown[depressed_breakdown["vader_compound_nosplit"] <= -0.05])
+        depressed_neutral = len(depressed_breakdown[(depressed_breakdown["vader_compound_nosplit"] > -0.05)
+                                                    & (depressed_breakdown["vader_compound_nosplit"] < 0.5)])
+        depressed_positive = len(depressed_breakdown[depressed_breakdown["vader_compound_nosplit"] >= 0.05])
+        not_depressed_negative = len(not_depressed_breakdown[not_depressed_breakdown["vader_compound_nosplit"] <= -0.05])
+        not_depressed_neutral = len(not_depressed_breakdown[(not_depressed_breakdown["vader_compound_nosplit"] > -0.05)
+                                                            & (not_depressed_breakdown["vader_compound_nosplit"] < 0.5)])
+        not_depressed_positive = len(not_depressed_breakdown[not_depressed_breakdown["vader_compound_nosplit"] >= 0.05])
+        data = [depressed_negative, depressed_neutral, depressed_positive, not_depressed_negative,
+                not_depressed_neutral, not_depressed_positive]
+        labels = ["depressed_negative", "depressed_neutral", "depressed_positive", "not_depressed_negative",
+                  "not_depressed_neutral", "not_depressed_positive"]
 
+        print(depressed_negative, depressed_neutral, depressed_positive, not_depressed_negative, not_depressed_neutral,
+              not_depressed_positive)
 
-        print("Description of depressed dataset")
-        print(depressed_breakdown.describe())
-        print("Description of the not depressed dataset")
-        print(not_depressed_breakdown.describe())
+        print("Description of depressed dataset (vader)")
+        print(depressed_breakdown[["vader_negative", "vader_neutral", "vader_positive"]].describe())
+        print("Description of depressed dataset (vader with no sentence splitting)")
+        print(depressed_breakdown[
+                  ["vader_negative_nosplit", "vader_neutral_nosplit", "vader_positive_nosplit"]].describe())
+        print("Description of depressed dataset (continued)")
+        print(depressed_breakdown[["vader_compound_nosplit"]].describe())
+        print("Difference in vader results")
+        print(depressed_breakdown[["vader_difference_neg", "vader_difference_neu", "vader_difference_pos"]].describe())
+        print("Description of the not depressed dataset (vader)")
+        print(not_depressed_breakdown[["vader_negative", "vader_neutral", "vader_positive"]].describe())
+        print("Description of the not depressed dataset (continued)")
+        print(not_depressed_breakdown[["vader_compound_nosplit"]].describe())
+        print("Description of the not depressed dataset (vader with no sentence splitting)")
+        print(not_depressed_breakdown[
+                  ["vader_negative_nosplit", "vader_neutral_nosplit", "vader_positive_nosplit"]].describe())
+        print("Difference in vader results")
+        print(not_depressed_breakdown[
+                  ["vader_difference_neg", "vader_difference_neu", "vader_difference_pos"]].describe())
 
         ax = WordCloud(background_color="white", width=1500, height=1500).generate(
             str(depressed_breakdown["token"]))
@@ -324,11 +355,12 @@ class Functions:
         af = self.dataset.plot.hist(column=["vader_positive_nosplit"], by="depressed")
         plt.show()
         ae = self.dataset.boxplot(column=["vader_negative_nosplit", "vader_neutral_nosplit",
-                                               "vader_positive_nosplit", "vader_compound_nosplit"], by="depressed")
+                                          "vader_positive_nosplit", "vader_compound_nosplit"], by="depressed")
         plt.show()
-
-
-        #  TODO Collocation
+        ag = plt.pie(data[:3], labels=labels[:3], autopct='%.2f%%')
+        plt.show()
+        ah = plt.pie(data[3:], labels=labels[3:], autopct='%.2f%%')
+        plt.show()
 
     def assess_vader_diff(self):
         self.dataset["vader_difference_neg"] = self.dataset["vader_negative"] - self.dataset["vader_negative_nosplit"]
@@ -337,6 +369,7 @@ class Functions:
         self.dataset["vader_difference_com"] = self.dataset["vader_compound"] - self.dataset["vader_compound_nosplit"]
 
     def print_dataset(self):
+        print(self.dataset.columns)
         print(self.dataset.head())
         print(self.dataset.describe())
 
@@ -344,6 +377,30 @@ class Functions:
         result = self.dataset.query("depressed == 1").sample(frac=.1)
         for x in result.index:
             print(result["token"][x])
+
+    def average_response_size(self):
+        depressed_breakdown = self.dataset[self.dataset["depressed"] == 1]
+        not_depressed_breakdown = self.dataset[self.dataset["depressed"] == 0]
+        depressed_word_total = 0
+        not_depressed_word_total = 0
+        depressed_counter = 0
+        not_depressed_counter = 0
+        for i in self.dataset.index:
+            if self.dataset.iloc[i][1] == 1:
+                result = self.dataset.iloc[i][0]
+                result = result.split()
+                depressed_word_total = depressed_word_total + len(result)
+                depressed_counter += 1
+            elif self.dataset.iloc[i][1] == 0:
+                result = self.dataset.iloc[i][0]
+                result = result.split()
+                not_depressed_word_total = not_depressed_word_total + len(result)
+                not_depressed_counter += 1
+            else:
+                print("Error!")
+        print("Average response size for depressed group:" + " " + str((depressed_word_total / depressed_counter)))
+        print("Average response size for not depressed group" + " " + str((not_depressed_word_total
+                                                                           / not_depressed_counter)))
 
     def model_tests(self):
         detokenised = []
@@ -367,8 +424,6 @@ class Functions:
 
         y_predict = nb.predict(X_test_vetorised)
 
-
-
         print("Naive Brayers")
         print("Accuracy:" + " " + str((round((accuracy_score(y_test, y_predict) * 100), 2))) + "%")
         print("F1 score" + " " + str((round((f1_score(y_test, y_predict) * 100), 2))))
@@ -378,4 +433,3 @@ class Functions:
         y_predict = model.score(X_train_vectorised, y_train)
         print("Logistic Regression")
         print("R2:" + " " + str(y_predict))
-

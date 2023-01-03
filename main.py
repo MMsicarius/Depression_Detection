@@ -17,8 +17,12 @@ data.assess_vader_diff()
 
 data.model_tests()
 
-#data.print_dataset()
+data.print_dataset()
+
+data.average_response_size()
 
 data.sentiment_word_analysis()
 
 data.sentiment_analysis()
+
+
